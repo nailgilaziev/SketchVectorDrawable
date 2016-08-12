@@ -8,7 +8,7 @@ main = {
     layerVisibility: [],
 
 
-    export: function(includeVC) {
+    export: function() {
         this.baseDir = this.getDirFromPrompt();
 
         if (this.baseDir == null) {
@@ -20,7 +20,7 @@ main = {
         if ([selection count] == 0) {
             this.alert("Whoooa there partner! No layer(s) selected.");
             return;
-        }
+        } 
 
         // Hide all layers except the ones we are slicing
         for (var i = 0; i < [selection count]; i++) {
@@ -37,33 +37,21 @@ main = {
 
             var root = artboard;
 
-            this.hideLayers(root, layer);
+            // this.hideLayers(root, layer);
 
             // Process the slice
-            success = this.processSlice(layer, includeVC);
-
-            // Restore layers visibility
-            for (var m = 0; m < this.layerVisibility.length; m++) {
-                var dict = this.layerVisibility[m];
-                var layer = [dict objectForKey:"layer"];
-                var visibility = [dict objectForKey:"visible"];
-
-                if (visibility == 0) {
-                    [layer setIsVisible:false];
-                } else {
-                    [layer setIsVisible:true];
-                }
-            }
+            success = this.processSlice(layer);
 
             // Restore selection
             [artboard selectLayers:selection];
 
+            log("is success = " + success);
             if (success === false)
                 return;
         }
 
         // Open finder window with assets exported
-        this.openInFinder(this.baseDir + "/" + "android_assets/res");
+        this.openInFinder(this.baseDir);
     },
 
     // Return current working directory
@@ -79,7 +67,7 @@ main = {
     // Let the user specify a directory
     getDirFromPrompt: function() {
         var panel = [NSOpenPanel openPanel];
-        [panel setMessage:"Where do you want to place your assets?"];
+        [panel setMessage:"Where do you want to place your vectorDrawable files?"];
         [panel setCanChooseDirectories: true];
         [panel setCanChooseFiles: false];
         [panel setCanCreateDirectories: true];
@@ -91,15 +79,17 @@ main = {
         }
     },
 
-    processSlice: function(slice, includeVC) {
+    processSlice: function(slice) {
         var sliceName               = [slice name].trim().toLowerCase().replace(/\s/,'_').replace(/-+/g,'_').replace(/[^0-9a-z_]/,'');
         var version                 = this.copyLayerWithFactor(slice, 1.0);
-        var absoluteSVGFileName     = this.baseDir + "/" + "android_assets/res" + "/drawable/." + sliceName + ".svg";
-        var absoluteAndroidFileName = this.baseDir + "/" + "android_assets/res" + "/drawable/" + sliceName + ".xml";
+        var absoluteSVGFileName     = this.baseDir + "/" + "." + sliceName + ".svg";
+        var absoluteAndroidFileName = this.baseDir + "/" + sliceName + ".xml";
+
+        log("sliceName="+sliceName);
 
         [doc saveArtboardOrSlice:version toFile:absoluteSVGFileName];
 
-        var vectorDrawable = new Generator(includeVC).generateVectorDrawable(absoluteSVGFileName);
+        var vectorDrawable = new Generator().generateVectorDrawable(absoluteSVGFileName);
         var ok = this.writeTextToFile(vectorDrawable, absoluteAndroidFileName);
         if (ok === false) {
             this.alert("Bummers, something went wrong trying to create the Android VectorDrawable");

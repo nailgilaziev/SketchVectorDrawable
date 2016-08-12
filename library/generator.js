@@ -14,7 +14,6 @@ var lastFileName = "";
 var lastFileData;
 var warnings = [];
 var error = null
-var includeVC = true;
 
 
 Generator = function(){ }
@@ -25,8 +24,7 @@ Generator.prototype.generateVectorDrawableAsync = function(filePath, callback){
     callback(error, parsedVectorDrawable);
 }
 
-Generator.prototype.generateVectorDrawable = function(filePath, includeVC){
-    this.includeVC = includeVC;
+Generator.prototype.generateVectorDrawable = function(filePath){
     var svgAsString = NSString.stringWithContentsOfFile(filePath);
     var parsedVectorDrawable = parseFile(svgAsString);
     return parsedVectorDrawable
@@ -153,11 +151,14 @@ function parsePathD(pathData) {
     path = fixPathPositioning(pathRebuild);
     path = fixNumberFormatting(path);
 
+    //TODO prettify subpaths
+    // path.replace(" M","\nM");
+
     if (!path.endsWith(" ")) {
         path += " ";
     }
 
-    return wordwrap(path.trim(), 80, "\n");
+    return path.trim();
 }
 
 
@@ -198,10 +199,7 @@ function printGroupStart(groupTransform, groupLevel) {
     generatedOutput += generateAttr("name", groupTransform.id, groupLevel + 1, "");
     generatedOutput += generateAttr("translateX", groupTransform.transformX, groupLevel + 1, 0);
     generatedOutput += generateAttr("translateY", groupTransform.transformY, groupLevel + 1, 0);
-    if (this.includeVC){
-    	generatedOutput += generateCompatAttr("vc_translateX", groupTransform.transformX, groupLevel + 1, 0);
-    	generatedOutput += generateCompatAttr("vc_translateY", groupTransform.transformY, groupLevel + 1, 0);
-    }
+    
     generatedOutput += generateAttr("scaleX", groupTransform.scaleX, groupLevel + 1, 1);
     generatedOutput += generateAttr("scaleY", groupTransform.scaleY, groupLevel + 1, 1);
     if (generatedOutput.endsWith("\n")) {
@@ -266,20 +264,8 @@ function printPath(pathData, stylesArray, groupLevel) {
     generatedOutput += generateAttr('strokeMiterLimit', styles["stroke-miterlimit"], groupLevel, "4");
     generatedOutput += generateAttr('strokeLineCap', styles["stroke-linecap"], groupLevel, "butt");
     
-    if (this.includeVC){
-    	generatedOutput += generateAttr('pathData', pathData, groupLevel, null, false);
-    	generatedOutput += generateCompatAttr('vc_fillColor', parseColorToHex(styles["fill"]), groupLevel, "none");
-    	generatedOutput += generateCompatAttr('vc_fillAlpha', styles["fill-opacity"], groupLevel, "1");
-    	generatedOutput += generateCompatAttr('vc_strokeColor', parseColorToHex(styles["stroke"]), groupLevel, "none");
-    	generatedOutput += generateCompatAttr('vc_strokeAlpha', styles["stroke-opacity"], groupLevel, "1");
-    	generatedOutput += generateCompatAttr('vc_strokeWidth', removeNonNumeric(styles["stroke-width"]), groupLevel, "0");
-    	generatedOutput += generateCompatAttr('vc_strokeLineJoin', styles["stroke-linejoin"], groupLevel, "miter");
-    	generatedOutput += generateCompatAttr('vc_strokeMiterLimit', styles["stroke-miterlimit"], groupLevel, "4");
-    	generatedOutput += generateCompatAttr('vc_strokeLineCap', styles["stroke-linecap"], groupLevel, "butt");
-    	generatedOutput += generateCompatAttr('vc_pathData', pathData, groupLevel, null, true);
-    } else {
-    	generatedOutput += generateAttr('pathData', pathData, groupLevel, null, true);
-    }
+    generatedOutput += generateAttr('pathData', pathData, groupLevel, null, true);
+    
     pathsParsedCount++;
 }
 
@@ -309,17 +295,14 @@ function parseFile(inputXml) {
     //XML Vector start
     generatedOutput = '<?xml version="1.0" encoding="utf-8"?>\n';
     generatedOutput += '<vector xmlns:android="http://schemas.android.com/apk/res/android"\n';
-    generatedOutput += INDENT + 'xmlns:app="http://schemas.android.com/apk/res-auto"\n';
+    //generatedOutput += INDENT + 'xmlns:app="http://schemas.android.com/apk/res-auto"\n';
     generatedOutput += INDENT + 'android:width="{0}dp"\n'.f(width);
     generatedOutput += INDENT + 'android:height="{0}dp"\n'.f(height);
     generatedOutput += INDENT + 'android:viewportWidth="{0}"\n'.f(width);
     generatedOutput += INDENT + 'android:viewportHeight="{0}"\n'.f(height);
-    if (this.includeVC){
-    	generatedOutput += INDENT + 'app:vc_viewportWidth="{0}"\n'.f(width);
-    	generatedOutput += INDENT + 'app:vc_viewportHeight="{0}">\n\n'.f(height);
-    } else {
-    	generatedOutput += INDENT + '>\n\n';
-    }
+    
+    generatedOutput += INDENT + '>\n\n';
+    
 
     //XML Vector content
     //Iterate through groups and paths
